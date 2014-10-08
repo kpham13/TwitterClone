@@ -8,16 +8,19 @@
 
 import Foundation
 
-// Model the class according to JSON
+// Model Class According to JSON
 class Tweet {
-    var text : String
     
-    // Initializer(s) for default class properties
+    var text : String
+    var userDictionary : NSDictionary
+    
+    // Initializer - Default Class Properties
     init (tweetInfo : NSDictionary) {
         self.text = tweetInfo["text"] as String
+        self.userDictionary = tweetInfo["user"] as NSDictionary
     }
     
-    // Factory method - very common to parse JSON in models rather than ViewControllers because you'll reuse in different ones
+    // Factory Method - very common to parse JSON in models rather than ViewControllers because reusability in different controllers
     class func parseJSONDataIntoTweets(rawJSONData : NSData) -> [Tweet]? {
         var error : NSError?
         
@@ -28,7 +31,7 @@ class Tweet {
             // JSON file gives a dictionary for each tweet, loop through each JSON dictionary to create tweets
             for JSONDictionary in JSONArray {
                 if let tweetDictionary = JSONDictionary as? NSDictionary {
-                    var newTweet = Tweet(tweetInfo: tweetDictionary)
+                    var newTweet = Tweet(tweetInfo : tweetDictionary)
                     tweets.append(newTweet)
                 }
             }
