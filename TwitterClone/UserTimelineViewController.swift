@@ -1,8 +1,8 @@
 //
-//  HomeTimelineViewController.swift
+//  UserTimelineViewController.swift
 //  TwitterClone
 //
-//  Created by Kevin Pham on 10/6/14.
+//  Created by Kevin Pham on 10/9/14.
 //  Copyright (c) 2014 Kevin Pham. All rights reserved.
 //
 
@@ -10,55 +10,50 @@ import UIKit
 import Accounts
 import Social
 
-class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIApplicationDelegate {
-    
-    var titleHTVC = "Home"
-    
-    var tweets : [Tweet]?
+class UserTimelineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIApplicationDelegate {
+
+    var userTweets : [Tweet]?
     var twitterAccount : ACAccount?
     var networkController : TwitterService!
     
+    var name : String?
+    var userScreenName : String?
+    var userLocation : String?
+    var userAvatar : UIImage?
+    
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var avatarImageViewUTVC: UIImageView!
+    @IBOutlet weak var nameTextUTVC: UILabel!
+    @IBOutlet weak var locationTextUTVC: UILabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.tableView.dataSource = self // Provides Data
-        self.tableView.delegate = self // Provides User Interaction
+        self.tableView.dataSource = self
+        self.tableView.delegate = self
         self.setupNavBar()
+        self.displayProfile()
         
         // Registering Nib file
         self.tableView.registerNib(UINib(nibName: "TweetCell", bundle: NSBundle.mainBundle()), forCellReuseIdentifier: "TWEET_CELL")
         
-        // Self sizing cells - set the rowHeight of your table view to UITableViewAutomaticDimension
+        // Self-sizing cells
         self.tableView.estimatedRowHeight = 100.0
         self.tableView.rowHeight = UITableViewAutomaticDimension
         
         // Accessing AppDelegate
         let appDelegate = UIApplication.sharedApplication().delegate as AppDelegate
-        self.networkController = appDelegate.networkController // Assigning networkController from AppDelegate
+        self.networkController = appDelegate.networkController
+        self.networkController.userScreenName = self.userScreenName
         
-        self.networkController.fetchHomeTimeline { (errorDescription, tweets) -> (Void) in
+        // Fetch User Timeline from TwitterService (self.networkController -> appDelegate.networkController -> TwitterService)
+        self.networkController.fetchUserTimeline { (errorDescription, tweets) -> (Void) in
             if errorDescription != nil {
-                // Alert the user that something went wrong here or log errors.
+                println("Uh oh.")
             } else {
-                // Request Successful!
-                self.tweets = tweets
+                self.userTweets = tweets
                 self.tableView.reloadData()
             }
         }
-        
-        /* // Parsing Local JSON File
-        if let path = NSBundle.mainBundle().pathForResource("tweet", ofType: "json") {
-        var error : NSError? // Optional error variable
-        let jsonData = NSData(contentsOfFile: path)
-        self.tweets = Tweet.parseJSONDataIntoTweets(jsonData)
-        }
-        */
-    }
-    
-    override func viewDidAppear(animated: Bool) {
-        //
-        self.tableView.reloadData()
     }
     
     override func didReceiveMemoryWarning() {
@@ -68,51 +63,35 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
     // MARK: - Table View Data Source
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if self.tweets != nil {
-            return self.tweets!.count
+        if self.userTweets != nil {
+            return self.userTweets!.count
         } else {
             return 0
         }
     }
     
-    /*
-    func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
-        return 120.0
-    }
-    */
-    
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         // 1. Dequeue Reusable Cell using TweetCell Custom Cell Class
         let cell: TweetCell = tableView.dequeueReusableCellWithIdentifier("TWEET_CELL", forIndexPath: indexPath) as TweetCell
         
-        // * Sort *
-        // var sortedTweets = tweets?.sorted { $0.localizedCaseInsensitiveCompare($1) == NSComparisonResult.OrderedAscending }
-        
         // 2.0 Configure Cell...
-        let tweet = self.tweets?[indexPath.row]
-        
-        //var userName = tweet!.userDictionary["screen_name"] as? String
+        let tweet = self.userTweets?[indexPath.row]
+
         var retweetString = String(tweet!.retweetCount)
         var favoriteString = String(tweet!.favoriteCount)
-        
+
         // 2.1 Tweet Labels
-        cell.nameText.text = tweet!.name
+        cell.nameText.text = tweet!.userDictionary["name"] as? String
         cell.userNameText.text = "@" + tweet!.screenName
         cell.tweetText.text = tweet?.text
-
+        
         // 2.2 Avatar ImageView Rounded Corners
-        cell.avatarImageView.layer.cornerRadius = cell.avatarImageView.frame.size.width / 6 // 2=Circle, 3,4,5=RoundedCorners, 10=
+        cell.avatarImageView.layer.cornerRadius = cell.avatarImageView.frame.size.width / 6
         cell.avatarImageView.clipsToBounds = true
         cell.avatarImageView.layer.borderWidth = 3.0
         cell.avatarImageView.layer.borderColor = UIColor.whiteColor().CGColor
         
         // 2.3 NSOperations - Avatar Image
-        if tweet?.avatarImage != nil {
-            // If avatarImage does exist, set avatarImageView
-            cell.avatarImageView.image = tweet?.avatarImage
-        } else {
-            // Download user image
-        }
         if tweet?.avatarImage != nil {
             cell.avatarImageView.image = tweet?.avatarImage
         } else {
@@ -121,14 +100,14 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
                 cellForImage?.avatarImageView.image = image
             })
         }
-        
+
         // 2.4 Twitter Actions
         cell.replyImageView.image = cell.replyIcon
         cell.retweetImageView.image = cell.retweetIcon
         cell.favoriteImageView.image = cell.favoriteIcon
         cell.retweetCountLabel.text = retweetString
         cell.favoriteCountLabel.text = favoriteString
-
+        
         // 3. Return Cell
         return cell
     }
@@ -139,9 +118,7 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
         tableView.deselectRowAtIndexPath(indexPath, animated: true)
         
         let newVC = self.storyboard?.instantiateViewControllerWithIdentifier("SINGLE_TWEET_VC") as SingleTweetViewController
-        //newVC.view.backgroundColor = UIColor.redColor()
-        //newVC.countLabel.text = "sdofijsdoifj"
-        var tweetForRow = self.tweets?[indexPath.row]
+        var tweetForRow = self.userTweets?[indexPath.row]
         newVC.selectedTweet = tweetForRow
         
         self.navigationController?.pushViewController(newVC, animated: true)
@@ -152,8 +129,21 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
     func setupNavBar() {
         // Navigation Bar Setup
         var composeBarButton = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Compose, target: self, action: "composeTweet")
-        self.title = self.titleHTVC
+        // self.title = self.name
         self.navigationItem.rightBarButtonItem = composeBarButton
+        // self.navigationController?.navigationBarHidden = true
+        self.navigationController?.navigationBar.translucent = true
+    }
+    
+    func displayProfile() {
+        self.avatarImageViewUTVC.layer.cornerRadius = self.avatarImageViewUTVC.frame.size.width / 6
+        self.avatarImageViewUTVC.clipsToBounds = true
+        self.avatarImageViewUTVC.layer.borderWidth = 3.0
+        self.avatarImageViewUTVC.layer.borderColor = UIColor.whiteColor().CGColor
+        self.avatarImageViewUTVC.image = self.userAvatar
+        
+        self.nameTextUTVC.text = self.name
+        self.locationTextUTVC.text = self.userLocation
     }
     
     func composeTweet() {
