@@ -4,8 +4,11 @@ TwitterClone
 Week 1 - TwitterClone App
 
 - Accounts framework
-- Concurrency
+- Autolayout & Dynamic cell height
+- Concurrency (asynchronous image downloads)
 - JSON parsing
+- Navigation Controller (Push/Pop methods)
 - Network Controller (network calls, API requests, HTTP status codes)
+- Nib/Xib
 - Social framework
-- TableView Controller/Cells (custom table view cells & cell UI image)
+- TableViews (custom table view cells, cell UI image, header view)
