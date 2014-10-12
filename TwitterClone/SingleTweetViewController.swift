@@ -15,6 +15,7 @@ class SingleTweetViewController: UIViewController {
     var favoriteText = "FAVORITES"
     var selectedTweet : Tweet?
     
+    @IBOutlet weak var tabBar: UITabBar!
     @IBOutlet weak var avatarImageViewSTVC: UIImageView!
     @IBOutlet weak var nameTextSTVC: UILabel!
     @IBOutlet weak var userNameTextSTVC: UILabel!
@@ -29,6 +30,14 @@ class SingleTweetViewController: UIViewController {
         super.viewDidLoad()
         self.setupNavBar()
         self.displayTweet()
+        
+//        // Tab Bar
+//        let tabBar = self.tabBar
+//        let tabItems = tabBar.items as [UITabBarItem]
+//        tabItems[0].title = "Timelines"
+//        tabItems[1].title = "Notifications"
+//        tabItems[2].title = "Messages"
+//        tabItems[3].title = "Me"
         
         // UIGestureRecognizer
         let imageSelect = UITapGestureRecognizer(target: self, action: NSSelectorFromString("imageTap"))

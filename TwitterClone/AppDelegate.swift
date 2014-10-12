@@ -23,6 +23,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let navController = UINavigationController(rootViewController: rootViewController!)
         window?.rootViewController = navController
         */
+        
+//        let tabBarController = UITabBarController()
+//        let myVC1 = HomeTimelineViewController()
+//        let controllers = [myVC1]
+//        tabBarController.viewControllers = controllers
+//        //window?.rootViewController = tabBarController
+//        //let firstImage = UIImage(named: "pie bar icon")
+//        //let secondImage = UIImage(named: "pizza bar icon")
+//        myVC1.tabBarItem = UITabBarItem(title: "Timelines", image: nil, tag: 1)
+//        //myVC2.tabBarItem = UITabBarItem(title: "Pizza", image: secondImage, tag:2)
+        
         return true
     }
 

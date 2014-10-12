@@ -12,16 +12,18 @@ import Social
 
 class UserTimelineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIApplicationDelegate {
 
-    var userTweets : [Tweet]?
     var twitterAccount : ACAccount?
     var networkController : TwitterService!
-    
+    var refreshControl : UIRefreshControl!
+
+    var userTweets : [Tweet]?
     var name : String?
     var userScreenName : String?
     var userLocation : String?
     var userAvatar : UIImage?
     
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var tabBar: UITabBar!
     @IBOutlet weak var avatarImageViewUTVC: UIImageView!
     @IBOutlet weak var nameTextUTVC: UILabel!
     @IBOutlet weak var locationTextUTVC: UILabel!
@@ -33,6 +35,14 @@ class UserTimelineViewController: UIViewController, UITableViewDataSource, UITab
         self.setupNavBar()
         self.displayProfile()
         
+//        // Tab Bar
+//        let tabBar = self.tabBar
+//        let tabItems = tabBar.items as [UITabBarItem]
+//        tabItems[0].title = "Timelines"
+//        tabItems[1].title = "Notifications"
+//        tabItems[2].title = "Messages"
+//        tabItems[3].title = "Me"
+        
         // Registering Nib file
         self.tableView.registerNib(UINib(nibName: "TweetCell", bundle: NSBundle.mainBundle()), forCellReuseIdentifier: "TWEET_CELL")
         
@@ -43,10 +53,9 @@ class UserTimelineViewController: UIViewController, UITableViewDataSource, UITab
         // Accessing AppDelegate
         let appDelegate = UIApplication.sharedApplication().delegate as AppDelegate
         self.networkController = appDelegate.networkController
-        self.networkController.userScreenName = self.userScreenName
         
         // Fetch User Timeline from TwitterService (self.networkController -> appDelegate.networkController -> TwitterService)
-        self.networkController.fetchUserTimeline { (errorDescription, tweets) -> (Void) in
+        self.networkController.fetchUserTimeline(self.userScreenName!) { (errorDescription, tweets) -> (Void) in
             if errorDescription != nil {
                 println("Uh oh.")
             } else {
@@ -54,6 +63,17 @@ class UserTimelineViewController: UIViewController, UITableViewDataSource, UITab
                 self.tableView.reloadData()
             }
         }
+        
+        // Initialize Refresh function
+        self.refreshControl = UIRefreshControl()
+        self.refreshControl.attributedTitle = NSAttributedString(string: "Pull to Refresh")
+        self.refreshControl.addTarget(self, action: "refreshTimeline:", forControlEvents: UIControlEvents.ValueChanged)
+        self.tableView.addSubview(refreshControl) // Adding Refresh to Subview
+    }
+    
+    override func viewDidAppear(animated: Bool) {
+        // Dynamic Cell Height
+        self.tableView.reloadData()
     }
     
     override func didReceiveMemoryWarning() {
@@ -124,10 +144,79 @@ class UserTimelineViewController: UIViewController, UITableViewDataSource, UITab
         self.navigationController?.pushViewController(newVC, animated: true)
     }
     
+    // Refresh Timeline (since_id)
+    func refreshTimeline(sender: AnyObject) {
+        var updatedTweets = [Tweet]()
+        var tweet = self.userTweets?[0]
+        var tweetID = tweet?.id
+        //println(tweet?.name)
+        
+        self.networkController.refreshUserTimeline(self.userScreenName!, tweetID: tweetID!) { (errorDescription, tweets) -> (Void) in
+            if errorDescription != nil {
+                // Alert the user that something went wrong here or log errors.
+            } else {
+                // Request Successful!
+                updatedTweets = tweets!
+                //self.tweets?.insert(updatedTweets, atIndex: 0) // NSArray not a Subtype of 'Tweet' error
+                //self.tweets?.append(updatedTweets)
+                println(updatedTweets.count)
+                println(updatedTweets)
+                switch updatedTweets.count {
+                case 0:
+                    println("No new updates")
+                default:
+                    println("Updating...")
+                    for newTweetIndex in 0...(updatedTweets.count-1) {
+                        var newTweet = updatedTweets[newTweetIndex]
+                        self.userTweets?.insert(newTweet, atIndex: newTweetIndex)
+                        println("Appended")
+                    }
+                    
+                    self.tableView.reloadData()
+                }
+            }
+            
+            self.refreshControl.endRefreshing()
+        }
+    }
+    
+    // Infinite Scrolling (max_id)
+    func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+        var updatedTweets = [Tweet]()
+        var tableCount = userTweets?.count
+        
+        if (tableCount!-20) == indexPath.row {
+            var tweet = self.userTweets?.last
+            var tweetID = tweet?.id
+            var tweetMaxID = tweetID! - 1
+            
+            self.networkController.scrollUserTimeline(self.userScreenName!, tweetID: tweetMaxID, completionHandler: { (errorDescription, tweets) -> (Void) in
+                if errorDescription != nil {
+                    // Alert the user that something went wrong here or log errors.
+                } else {
+                    updatedTweets = tweets!
+                    switch updatedTweets.count {
+                    case 0:
+                        println("No new updates")
+                    default:
+                        println("Updating...")
+                        for newTweetIndex in 0...(updatedTweets.count-1) {
+                            var newTweet = updatedTweets[newTweetIndex]
+                            self.userTweets?.append(newTweet)
+                        }
+                        
+                        self.tableView.reloadData()
+                    }
+                }
+
+            })
+        }
+    }
+    
     // MARK: - Custom
     
+    // Navigation Bar Setup
     func setupNavBar() {
-        // Navigation Bar Setup
         var composeBarButton = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Compose, target: self, action: "composeTweet")
         // self.title = self.name
         self.navigationItem.rightBarButtonItem = composeBarButton

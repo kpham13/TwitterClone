@@ -11,6 +11,7 @@ import UIKit
 // Model Class According to JSON
 class Tweet {
     
+    var id : Int
     var name : String
     var screenName : String
     var text : String
@@ -22,10 +23,13 @@ class Tweet {
     
     var userDictionary : NSDictionary
     
+    var hasImage = false
+    
     // Initializer - Default Class Properties
     init (tweetInfo : NSDictionary) {
         let userInfo = tweetInfo["user"] as NSDictionary
         
+        self.id = tweetInfo["id"] as Int
         self.name = userInfo["name"] as String
         self.screenName = userInfo["screen_name"] as String
         self.text = tweetInfo["text"] as String
@@ -42,7 +46,7 @@ class Tweet {
         // Using Objective-C NSArray and/or NSDictionary rather than Swift Array/Dictionary
         if let JSONArray = NSJSONSerialization.JSONObjectWithData(rawJSONData, options: nil, error: &error) as? NSArray {
             var tweets = [Tweet]() // Shorthand to initialize array
-            //println(JSONArray[0]) // Actual Twitter JSON
+            // println(JSONArray[0]) // Actual Twitter JSON
             
             // JSON file gives a dictionary for each tweet, loop through each JSON dictionary to create tweets
             for JSONDictionary in JSONArray {

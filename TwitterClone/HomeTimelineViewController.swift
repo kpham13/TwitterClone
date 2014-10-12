@@ -15,16 +15,27 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
     var titleHTVC = "Home"
     
     var tweets : [Tweet]?
+    //var imageCache = [String : UIImage]()
     var twitterAccount : ACAccount?
     var networkController : TwitterService!
+    var refreshControl : UIRefreshControl!
     
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var tabBar: UITabBar!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.tableView.dataSource = self // Provides Data
         self.tableView.delegate = self // Provides User Interaction
         self.setupNavBar()
+        
+        // Tab Bar
+//        let tabBar = self.tabBar
+//        let tabItems = tabBar.items as [UITabBarItem]
+//        tabItems[0].title = "Timelines"
+        //tabItems[1].title = "Notifications"
+        //tabItems[2].title = "Messages"
+        //tabItems[3].title = "Me"
         
         // Registering Nib file
         self.tableView.registerNib(UINib(nibName: "TweetCell", bundle: NSBundle.mainBundle()), forCellReuseIdentifier: "TWEET_CELL")
@@ -54,10 +65,16 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
         self.tweets = Tweet.parseJSONDataIntoTweets(jsonData)
         }
         */
+        
+        // Initialize Refresh function
+        self.refreshControl = UIRefreshControl()
+        self.refreshControl.attributedTitle = NSAttributedString(string: "Pull to Refresh")
+        self.refreshControl.addTarget(self, action: "refreshTimeline:", forControlEvents: UIControlEvents.ValueChanged)
+        self.tableView.addSubview(refreshControl) // Adding Refresh to Subview
     }
     
     override func viewDidAppear(animated: Bool) {
-        //
+        // Dynamic Cell Height
         self.tableView.reloadData()
     }
     
@@ -112,13 +129,11 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
             cell.avatarImageView.image = tweet?.avatarImage
         } else {
             // Download user image
-        }
-        if tweet?.avatarImage != nil {
-            cell.avatarImageView.image = tweet?.avatarImage
-        } else {
             self.networkController.downloadUserImage(tweet!, completionHandler: { (image) -> (Void) in
                 let cellForImage = self.tableView.cellForRowAtIndexPath(indexPath) as TweetCell?
                 cellForImage?.avatarImageView.image = image
+                // Store the image in to our cache
+                // self.imageCache[urlString] = image
             })
         }
         
@@ -147,10 +162,78 @@ class HomeTimelineViewController: UIViewController, UITableViewDataSource, UITab
         self.navigationController?.pushViewController(newVC, animated: true)
     }
     
+    // Refresh Timeline (since_id)
+    func refreshTimeline(sender: AnyObject) {
+        var updatedTweets = [Tweet]()
+        var tweet = self.tweets?[0]
+        var tweetID = tweet?.id
+        println(tweet?.name)
+        
+        self.networkController.refreshHomeTimeline(tweetID!) { (errorDescription, tweets) -> (Void) in
+            if errorDescription != nil {
+                // Alert the user that something went wrong here or log errors.
+            } else {
+                // Request Successful!
+                updatedTweets = tweets!
+                //self.tweets?.insert(updatedTweets, atIndex: 0) // NSArray not a Subtype of 'Tweet' error
+                //self.tweets?.append(updatedTweets)
+                println(updatedTweets.count)
+                println(updatedTweets)
+                switch updatedTweets.count {
+                case 0:
+                    println("No new updates")
+                default:
+                    println("Updating...")
+                    for newTweetIndex in 0...(updatedTweets.count-1) {
+                        var newTweet = updatedTweets[newTweetIndex]
+                        self.tweets?.insert(newTweet, atIndex: newTweetIndex)
+                        println("Appended")
+                    }
+                    
+                    self.tableView.reloadData()
+                }
+            }
+            
+            self.refreshControl.endRefreshing()
+        }
+    }
+    
+    // Infinite Scrolling (max_id)
+    func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+        var updatedTweets = [Tweet]()
+        var tableCount = tweets?.count
+        
+        if (tableCount!-20) == indexPath.row {
+            var tweet = self.tweets?.last
+            var tweetID = tweet?.id
+            var tweetMaxID = tweetID! - 1
+            
+            self.networkController.scrollHomeTimeline(tweetMaxID, completionHandler: { (errorDescription, tweets) -> (Void) in
+                if errorDescription != nil {
+                    // Alert the user that something went wrong here or log errors.
+                } else {
+                    updatedTweets = tweets!
+                    switch updatedTweets.count {
+                    case 0:
+                        println("No new updates")
+                    default:
+                        println("Updating...")
+                        for newTweetIndex in 0...(updatedTweets.count-1) {
+                            var newTweet = updatedTweets[newTweetIndex]
+                            self.tweets?.append(newTweet)
+                        }
+                        
+                        self.tableView.reloadData()
+                    }
+                }
+            })
+        }
+    }
+    
     // MARK: - Custom
     
+    // Navigation Bar Setup
     func setupNavBar() {
-        // Navigation Bar Setup
         var composeBarButton = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Compose, target: self, action: "composeTweet")
         self.title = self.titleHTVC
         self.navigationItem.rightBarButtonItem = composeBarButton
