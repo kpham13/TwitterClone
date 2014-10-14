@@ -11,6 +11,6 @@ Week 1 - TwitterClone App
 - Navigation Controller (Push/Pop methods)
 - Network Controller (network calls, API requests, HTTP status codes)
 - Nib/Xib
+- Refresh Control
 - Social framework
 - TableViews (custom table view cells, cell UI image, header view)
-- UIRefreshControl
